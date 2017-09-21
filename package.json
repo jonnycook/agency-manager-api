@@ -1,0 +1,24 @@
+{
+  "name": "activity-tracker-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:mon": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "root@jonnycook.com:git/activity-tracker-api.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "hapi": "^16.5.0",
+    "json-stringify-date": "^0.1.4",
+    "mongodb": "^2.2.31",
+    "mongoose": "^4.11.4"
+  }
+}
