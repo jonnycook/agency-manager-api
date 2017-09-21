@@ -78,6 +78,10 @@ var prefix = '/v1/';
 //   };
 // }
 
+async function auth(token) {
+  return (await (await db.collection('users').find({authKey:token})).toArray()).length;
+}
+
 server.route([
   {
     method: 'POST',
@@ -86,9 +90,9 @@ server.route([
     payload: {
       parse: false
     },
-
   },
     handler: async function(request, reply) {
+      if (!(await auth(request.headers.authentication))) return reply(false);
       var payload = JSON.parse(request.payload);
       var mutation = payload.mutation;
       var collection = db.collection(payload.collection);
@@ -145,6 +149,7 @@ server.route([
     method: 'GET',
     path: `${prefix}pull`,
     handler: async function(request, reply) {
+      if (!(await auth(request.headers.authentication))) return reply(false);
       var collections = {};
       for (var collection of await db.collections()) {
         collections[collection.collectionName] = await (await collection.find({_deleted:null})).toArray();
