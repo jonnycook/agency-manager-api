@@ -31,7 +31,9 @@ const server = new Hapi.Server();
 server.connection({ 
   // host: 'localhost', 
   port: 8000,
-  routes: { cors: true }
+  routes: { cors: {
+        headers: ['Accept', 'Authorization', 'Content-Type', 'If-None-Match', 'authentication']
+      } }
 });
 
 var prefix = '/v1/';
@@ -85,12 +87,25 @@ async function auth(token) {
 server.route([
   {
     method: 'POST',
+    path: `${prefix}login`,
+    handler: async function(request, reply) {
+      var doc = await db.collection('users').findOne({email:request.payload.email, password:request.payload.password});
+      if (doc) {
+        reply(doc.authKey);
+      }
+      else {
+        reply(false);
+      }
+    }
+  },
+  {
+    method: 'POST',
     path: `${prefix}push`,
     config: {
-    payload: {
-      parse: false
+      payload: {
+        parse: false
+      },
     },
-  },
     handler: async function(request, reply) {
       if (!(await auth(request.headers.authentication))) return reply(false);
       var payload = JSON.parse(request.payload);
