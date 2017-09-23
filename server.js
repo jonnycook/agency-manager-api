@@ -21,7 +21,7 @@ MongoDB.MongoClient.connect(config.mongoConnection).then((a) => {
 
 
 async function auth(token) {
-  return (await (await db.collection('users').find({authKey:token})).toArray()).length;
+  return (await (await db.collection('agency_users').find({authKey:token})).toArray()).length;
 }
 
 
@@ -166,7 +166,7 @@ server.route([
     method: 'POST',
     path: `${prefix}login`,
     handler: async function(request, reply) {
-      var doc = await db.collection('users').findOne({email:request.payload.email, password:request.payload.password});
+      var doc = await db.collection('agency_users').findOne({email:request.payload.email, password:request.payload.password});
       if (doc) {
         reply(doc.authKey);
       }
