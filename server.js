@@ -131,6 +131,7 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
+    console.log('closed');
     sockets.splice(sockets.indexOf(ws), 1);
   });
 });
