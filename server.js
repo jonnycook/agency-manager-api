@@ -112,6 +112,7 @@ async function handleClientPush(payload) {
 
 
 wss.on('connection', (ws) => {
+  console.log('new connection');
   sockets.push(ws);
   ws.on('message', async (data) => {
     var message = JSON.parse(data);
