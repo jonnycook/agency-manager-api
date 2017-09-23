@@ -16,9 +16,10 @@
   "license": "ISC",
   "dependencies": {
     "bluebird": "^3.5.0",
-    "hapi": "^16.5.0",
+    "hapi": "^16.6.0",
     "json-stringify-date": "^0.1.4",
     "mongodb": "^2.2.31",
-    "mongoose": "^4.11.4"
+    "mongoose": "^4.11.4",
+    "ws": "^3.2.0"
   }
 }
