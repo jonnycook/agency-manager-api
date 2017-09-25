@@ -14,6 +14,10 @@ var wss = new WebSocket.Server({ port: 8080 });
 
 var sockets = [];
 
+var Sugar = require('sugar');
+
+Sugar.extend();
+
 var db;
 MongoDB.MongoClient.connect(config.mongoConnection).then((a) => {
   db = a;
@@ -22,6 +26,86 @@ MongoDB.MongoClient.connect(config.mongoConnection).then((a) => {
 
 async function auth(token) {
   return (await (await db.collection('agency_users').find({authKey:token})).toArray()).length;
+}
+
+
+var Models = {
+  Relationship: {
+    otherRelIndex(rel, entity) {
+      if (rel.entities[0] === entity._id) {
+        return 1;
+      }
+      else {
+        return 0;
+      }
+    }
+
+  },
+  Entity: {
+    relatedEntities(entity, type=null) {
+
+      function relationships() {
+        return db.relationships.filter((rel) => {
+          return rel.entities.includes(entity._id);
+        });
+      }
+
+
+      function relatedEntity(rel) {
+        var id = rel.entities[Models.Relationship.otherRelIndex(rel, entity)];
+        // return id;
+        if (id) {
+          return Collection.findById('entities', id);
+        }
+      }
+
+      var entities = relationships().map(relatedEntity);
+      if (type) {
+        return entities.filter((e) => e.type === type);
+      }
+      else {
+        return entities;
+      }
+    },
+
+    property(entity, name) {
+      return (entity.properties.find((e) => e.name === name) || {}).value;
+    },
+    state(entity, name) {
+      return entity.state ? (entity.state.find((e) => e.name === name) || {}) : {}
+    },
+    display(entity, showType=true) {
+      if (entity) {
+          var properties = {};
+          var e = entity;
+          while (true) {
+            for (var prop of e.properties) {
+              if (!(prop.name in properties)) {
+                properties[prop.name] = prop.value;
+              }
+            } 
+            if (e.extends) {
+              e = Collection.findById('entities', e.extends);
+            }
+            else {
+              break;
+            }
+          }
+
+          // var label = [];
+          // for (var propName of Object.keys(properties)) {
+          //   label.push(`${propName}: ${properties[propName]}`);
+          // }
+
+          var label = properties.Name ? properties.Name : Object.values(properties)[0];
+
+          return showType ? `${label} (${entity.type})` : label;
+      }
+      else {
+        return '(none)';
+      }
+    }
+  }
 }
 
 
@@ -150,12 +234,123 @@ server.connection({
 var prefix = '/v1/';
 
 
+async function timerData(subject) {
+  var entities = await (await db.collection('entities').find()).toArray();
+  var objects = [];
+
+  for (var entity of entities) {
+    var name = Models.Entity.display(entity);
+    objects.push({
+      label: name,
+      _id: { entity: entity._id }
+    });
+  }
+
+  for (var object of objects) {
+    object._id = new Buffer(JSON.stringify(object._id)).toString('base64');
+  }
+
+  var timers = [];
+
+  var grouped = {};
+  var entries = await (await db.collection('work_log_entries').find({ subject, start: { $gte: new Date().beginningOfDay(), $lt: new Date().endOfDay() } }).sort({start:-1})).toArray();
+
+  for (let entry of entries) {
+    let key = JSON.stringify(entry.activity);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(entry);
+  }
+
+  for (let key in grouped) {
+    let time = 0;
+    var started = null;
+    for (let entry of grouped[key]) {
+      if (entry.end) {
+        time += Math.floor((entry.end.getTime() - entry.start.getTime())/1000);
+      }
+      else {
+        started = entry.start;
+      }
+    }
+
+    let entry = grouped[key][0];
+    var label;
+    if (entry.activity.object.entity) {
+      var entity = await db.collection('entities').findOne({ _id: entry.activity.object.entity });
+      label = Models.Entity.display(entity);
+    }
+    else {
+      label = 'adsf';
+    }
+
+    timers.push({
+      label: label + ' - ' + entry.activity.activity,
+      time: time + '',
+      default: entries.length && entries[0]._id == entry._id ? 'true' : undefined,
+      started: started ? (Math.floor(started.getTime()/1000) + '') : undefined,
+      object: new Buffer(JSON.stringify(entry.activity.object)).toString('base64'),
+      activity: entry.activity.activity
+    });
+  }
+
+  timers.sort((a, b) => {
+    if (a.label < b.label) return -1;
+    else return 1;
+  })
+
+  return {
+    activities: ['Communication', 'Development', 'Management'],
+    objects: objects,
+    timers: timers,
+  };
+}
+
 server.route([
+  {
+    method: 'GET',
+    path: `${prefix}timer`,
+    handler: async function(request, reply) {
+
+      try {
+        reply(await timerData('jonny'));  
+      }
+      catch (e) {
+        console.log(e);
+      }
+      
+    }
+  },
+  {
+    method: 'POST',
+    path: `${prefix}timer`,
+    handler: async function(request, reply) {
+
+      var subject = 'jonny';
+      
+
+      var activity = {
+        activity: request.payload.activity,
+        object: JSON.parse(new Buffer(request.payload.object, 'base64').toString('ascii'))
+      }
+
+      var doc = await db.collection('work_log_entries').findOne({subject: subject, activity: activity, end: null});
+      if (doc) {
+        await db.collection('work_log_entries').update({_id: doc._id}, {$set: { end: new Date() }});
+      }
+      else {
+        await db.collection('work_log_entries').insert({subject: subject, activity: activity, start: new Date()});
+      }
+
+
+      console.log(activity);
+      reply(await timerData(subject));
+    }
+  },
+
   {
     method: 'GET',
     path: `${prefix}clients/push`,
     handler: async function(request, reply) {
-      console.log(request.query);
       for (var ws of sockets) {
         ws.send(request.query.message);
       }

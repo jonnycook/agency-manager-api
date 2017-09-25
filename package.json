@@ -20,6 +20,7 @@
     "json-stringify-date": "^0.1.4",
     "mongodb": "^2.2.31",
     "mongoose": "^4.11.4",
+    "sugar": "^2.0.4",
     "ws": "^3.2.0"
   }
 }
