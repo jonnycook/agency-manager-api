@@ -200,7 +200,7 @@ async function handleClientPush(payload, user) {
     var index = mutation.path[mutation.path.length - 1];
     await collection.update({ _id: payload._id }, {
       $push: {
-        ['_history.' + originalPath.slice(0, -1).join('.') + '._']: {
+        ['_history.' + originalPath.slice(0, -1).concat('&' + mutation.el._id).join('.') + '._']: {
           operation: 'insert',
           value: null,
           timestamp: new Date(),
