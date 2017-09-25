@@ -368,14 +368,30 @@ server.route([
 
       var doc = await db.collection('work_log_entries').findOne({subject: subject, activity: activity, end: null});
       if (doc) {
-        await db.collection('work_log_entries').update({_id: doc._id}, {$set: { end: new Date() }});
+        handleClientPush({
+          collection: 'work_log_entries',
+          _id: doc._id,
+          mutation: {
+            type: 'set',
+            path: ['end'],
+            value: new Date()
+          }
+        }, subject);
       }
       else {
-        await db.collection('work_log_entries').insert({subject: subject, activity: activity, start: new Date()});
+        // await db.collection('work_log_entries').insert({subject: subject, activity: activity, start: new Date()});
+        handleClientPush({
+          collection: 'work_log_entries',
+          mutation: {
+            type: 'create',
+            document: {
+              _id: new MongoDB.ObjectID().toString(),
+              subject: subject, activity: activity, start: new Date()
+            }
+          }
+        }, subject);
       }
 
-
-      console.log(activity);
       reply(await timerData(subject));
     }
   },
