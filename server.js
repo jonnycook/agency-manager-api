@@ -234,10 +234,11 @@ wss.on('connection', (ws) => {
     if (message.type == 'subscribe') {
     }
     else if (message.type == 'push') {
-      if (!(await auth(message.authKey))) {
+      var user;
+      if (!(user = await auth(message.authKey))) {
         ws.close();
       }
-      handleClientPush(message.payload);
+      handleClientPush(message.payload, user);
       for (let ws2 of sockets) {
         if (ws2 != ws) {
           ws2.send(data);
