@@ -117,9 +117,10 @@ async function handleClientPush(payload, user) {
   var mutation = payload.mutation;
   var collection = db.collection(payload.collection);
 
-  var originalPath = mutation.path.clone();
+  var originalPath
   var prev;
   if (mutation.path) {
+    originalPath = mutation.path.clone();
     var doc = await collection.findOne({ _id: payload._id });
     var obj = doc;
     for (var i = 0; i < mutation.path.length; ++ i) {
