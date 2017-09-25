@@ -109,35 +109,41 @@ var Models = {
 }
 
 
+
 async function handleClientPush(payload) {
+  var user = '';
   var mutation = payload.mutation;
   var collection = db.collection(payload.collection);
 
+  var originalPath = mutation.path.clone();
+  var prev;
   if (mutation.path) {
-    for (let comp of mutation.path) {
+    var doc = await collection.findOne({ _id: payload._id });
+    var obj = doc;
+    for (var i = 0; i < mutation.path.length; ++ i) {
+      let comp = mutation.path[i];
       if (comp[0] == '&') {
-        var doc = await collection.findOne({ _id: payload._id });
-
-        var obj = doc;
-        for (var i = 0; i < mutation.path.length; ++ i) {
-          let comp = mutation.path[i];
-          if (comp[0] == '&') {
-            var id = comp.substr(1);
-            var index = obj.findIndex((el) => el._id == id);
-            mutation.path[i] = index;
-            obj = obj[index];
-          }
-          else {
-            obj = obj[comp];
-          }
-        }
-        break;
+        var id = comp.substr(1);
+        var index = obj.findIndex((el) => el._id == id);
+        mutation.path[i] = index;
+        prev = obj = obj[index];
+      }
+      else {
+        prev = obj = obj[comp];
       }
     }
   }
 
   if (mutation.type == 'set') {
     await collection.update({ _id: payload._id }, {
+      $push: {
+        ['_history.' + originalPath.join('.') + '._']: {
+          operation: 'set',
+          value: prev,
+          timestamp: new Date(),
+          user: user
+        }
+      },
       $set: {
         [mutation.path.join('.')]: mutation.value
       }
@@ -146,6 +152,14 @@ async function handleClientPush(payload) {
   }
   else if (mutation.type == 'unset') {
     await collection.update({ _id: payload._id }, {
+      $push: {
+        ['_history.' + originalPath.join('.') + '._']: {
+          operation: 'unset',
+          value: prev,
+          timestamp: new Date(),
+          user: user
+        }
+      },
       $unset: {
         [mutation.path.join('.')]: ''
       }
@@ -157,6 +171,14 @@ async function handleClientPush(payload) {
 
     if (mutation.key) {
       await collection.update({ _id: payload._id }, {
+        $push: {
+          ['_history.' + originalPath.join('.') + '._']: {
+            operation: 'remove',
+            value: prev.find((el) => el._id == mutation.key),
+            timestamp: new Date(),
+            user: user
+          }
+        },
         $pull: { [mutation.path.join('.')]: { _id: mutation.key } }
       });
     }
@@ -176,6 +198,12 @@ async function handleClientPush(payload) {
     var index = mutation.path[mutation.path.length - 1];
     await collection.update({ _id: payload._id }, {
       $push: {
+        ['_history.' + originalPath.slice(0, -1).join('.') + '._']: {
+          operation: 'insert',
+          value: null,
+          timestamp: new Date(),
+          user: user
+        },
         [path.join('.')]: {
           $each: [ mutation.el ],
           $position: index
@@ -185,11 +213,12 @@ async function handleClientPush(payload) {
     return true;
   }
   else if (mutation.type == 'create') {
+    mutation.document._created = { timestamp: new Date(), user };
     await collection.insert(mutation.document);
     return true;
   }
   else if (mutation.type == 'delete') {
-    await collection.update({ _id: payload._id }, { $set: {_deleted: true} });
+    await collection.update({ _id: payload._id }, { $set: {_deleted: { timestamp: new Date(), user }} });
     return true;
   }
 }
@@ -379,9 +408,15 @@ server.route([
       },
     },
     handler: async function(request, reply) {
-      if (!(await auth(request.headers.authentication))) return reply(false);
-      var payload = JSON.parse(request.payload);
-      reply(await handleClientPush(payload));
+      try {
+        if (!(await auth(request.headers.authentication))) return reply(false);
+        var payload = JSON.parse(request.payload);
+        reply(await handleClientPush(payload));        
+      }
+      catch (e) {
+        console.log(e);
+        reply(false);
+      }
     }
   },
   {
