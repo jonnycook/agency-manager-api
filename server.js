@@ -174,7 +174,7 @@ async function handleClientPush(payload, user) {
     if (mutation.key) {
       await collection.update({ _id: payload._id }, {
         $push: {
-          ['_history.' + originalPath.join('.') + '._']: {
+          ['_history.' + originalPath.concat('&' + mutation.key).join('.') + '._']: {
             operation: 'remove',
             value: prev.find((el) => el._id == mutation.key),
             timestamp: new Date(),
