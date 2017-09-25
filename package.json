@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "start:mon": "nodemon server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy:staging": "git add -A; git commit -m \".\"; git push origin debug; ssh root@jonnycook.com \"cd apps/agency/api/; git pull; forever restart server.js\""
   },
   "repository": {
     "type": "git",

@@ -25,7 +25,10 @@ MongoDB.MongoClient.connect(config.mongoConnection).then((a) => {
 
 
 async function auth(token) {
-  return (await (await db.collection('agency_users').find({authKey:token})).toArray()).length;
+  var user = (await (await db.collection('agency_users').find({authKey:token})).toArray())[0];
+  if (user) {
+    return user._id;
+  }
 }
 
 
@@ -110,8 +113,7 @@ var Models = {
 
 
 
-async function handleClientPush(payload) {
-  var user = '';
+async function handleClientPush(payload, user) {
   var mutation = payload.mutation;
   var collection = db.collection(payload.collection);
 
@@ -409,9 +411,10 @@ server.route([
     },
     handler: async function(request, reply) {
       try {
-        if (!(await auth(request.headers.authentication))) return reply(false);
+        var user;
+        if (!(user = await auth(request.headers.authentication))) return reply(false);
         var payload = JSON.parse(request.payload);
-        reply(await handleClientPush(payload));        
+        reply(await handleClientPush(payload, user));        
       }
       catch (e) {
         console.log(e);
