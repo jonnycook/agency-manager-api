@@ -282,7 +282,7 @@ async function timerData(subject) {
   var issues = await (await db.collection('issues').find()).toArray();
   for (var issue of issues) {
     objects.push({
-      label: isses.description,
+      label: issue.description,
       _id: { issue: issue._id }
     });
   }
