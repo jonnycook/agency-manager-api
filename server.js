@@ -270,7 +270,7 @@ var prefix = '/v1/';
 async function timerData(subject) {
   var objects = [];
 
-  var entities = await (await db.collection('entities').find()).toArray();
+  var entities = await (await db.collection('entities').find({_deleted:null})).toArray();
   for (var entity of entities) {
     var name = Models.Entity.display(entity);
     objects.push({
@@ -279,8 +279,16 @@ async function timerData(subject) {
     });
   }
 
-  var issues = await (await db.collection('issues').find()).toArray();
+  var issues = await (await db.collection('issues').find({_deleted:null, completed:null})).toArray();
   for (var issue of issues) {
+    objects.push({
+      label: issue.description,
+      _id: { issue: issue._id }
+    });
+  }
+
+  var tasks = await (await db.collection('tasks').find({_deleted:null, completed:null})).toArray();
+  for (var issue of tasks) {
     objects.push({
       label: issue.description,
       _id: { issue: issue._id }
