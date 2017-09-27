@@ -288,10 +288,10 @@ async function timerData(subject) {
   }
 
   var tasks = await (await db.collection('tasks').find({_deleted:null, completed:null})).toArray();
-  for (var issue of tasks) {
+  for (var task of tasks) {
     objects.push({
-      label: issue.description,
-      _id: { issue: issue._id }
+      label: task.title,
+      _id: { task: task._id }
     });
   }
 
