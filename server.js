@@ -415,6 +415,33 @@ server.route([
 
   {
     method: 'GET',
+    path: `${prefix}data`,
+    handler: async function(request, reply) {
+      var doc = await db.collection('entities').findOne({_id: request.query.entity});
+      reply(doc.data.find((data) => data._id == request.query.data).content.body);
+    }
+  },
+
+  {
+    method: 'PUT',
+    path: `${prefix}data`,
+    handler: async function(request, reply) {
+      var subject = '59c309ff8111cc00006e9e61';
+      handleClientPush({
+        collection: 'entities',
+        _id: request.query.entity,
+        mutation: {
+          type: 'set',
+          path: ['data', '&' + request.query.data, 'content', 'body'],
+          value: request.payload.data
+        }
+      }, subject);
+      reply(true);
+    }
+  },
+
+  {
+    method: 'GET',
     path: `${prefix}clients/push`,
     handler: async function(request, reply) {
       for (var ws of sockets) {
