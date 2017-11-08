@@ -31,6 +31,18 @@ async function auth(token) {
   }
 }
 
+var Collection = {
+  removeDocument(name, doc) {
+    db[name].splice(db[name].findIndex(d => d._id === doc._id), 1);
+  },
+  async findById(name, id) {
+    return (await (await db.collection(name).find({_id:id})).toArray())[0];
+  },
+  async find(name, query) {
+    return await (await db.collection(name).find(query)).toArray();
+  }
+}
+
 
 var Models = {
   Relationship: {
@@ -45,24 +57,34 @@ var Models = {
 
   },
   Entity: {
-    relatedEntities(entity, type=null) {
-
-      function relationships() {
-        return db.relationships.filter((rel) => {
-          return rel.entities.includes(entity._id);
-        });
-      }
-
-
-      function relatedEntity(rel) {
-        var id = rel.entities[Models.Relationship.otherRelIndex(rel, entity)];
-        // return id;
-        if (id) {
-          return Collection.findById('entities', id);
+    async relatedEntities(entity, type=null, startPoint=null) {
+      async function relationships() {
+        if (startPoint === null) {
+          return await Collection.find('relationships', { entities: entity._id });
+        }
+        else if (startPoint === true) {
+          return await Collection.find('relationships', { 'entities.0': entity._id, directed: true });
+        }
+        else if (startPoint === false) {
+          return await Collection.find('relationships', { 'entities.1': entity._id, directed: true });
         }
       }
 
-      var entities = relationships().map(relatedEntity);
+      async function relatedEntity(rel) {
+        var id = rel.entities[Models.Relationship.otherRelIndex(rel, entity)];
+        // return id;
+        if (id) {
+          return await Collection.findById('entities', id);
+        }
+      }
+
+      var rels = await relationships(startPoint);
+      var entities = [];
+
+      for (var rel of rels) {
+        entities.push(await relatedEntity(rel));
+      }
+
       if (type) {
         return entities.filter((e) => e.type === type);
       }
@@ -77,18 +99,54 @@ var Models = {
     state(entity, name) {
       return entity.state ? (entity.state.find((e) => e.name === name) || {}) : {}
     },
-    display(entity, showType=true) {
+    async display(entity, showType=true) {
       if (entity) {
+        var func = {
+          async Call() {
+            var date = Models.Entity.property(entity, 'Date');
+            if (date && date.format) {
+              var parent = (await Models.Entity.relatedEntities(entity, null, false))[0];
+              var label = date.format('{yyyy}-{MM}-{dd}');
+              if (parent) {
+                return (await Models.Entity.display(parent, false)) + '/' + label;
+              }
+            }
+          },
+          async Workload() {
+            var month = Models.Entity.property(entity, 'Month');
+            var parent = (await Models.Entity.relatedEntities(entity, null, false))[0];
+            var label = month;
+            if (parent) {
+              return (await Models.Entity.display(parent, false)) + '/' + label;
+            }
+          }
+        }[entity.type];
+
+        var label;
+
+
+
+        if (func) {
+          label = await func();
+        }
+        
+
+        if (!label) {
           var properties = {};
           var e = entity;
           while (true) {
             for (var prop of e.properties) {
               if (!(prop.name in properties)) {
-                properties[prop.name] = prop.value;
+                if (prop.type == 'date') {
+                  properties[prop.name] = prop.value.format('{yyyy}-{MM}-{dd}');
+                }
+                else {
+                  properties[prop.name] = prop.value;                  
+                }
               }
             } 
             if (e.extends) {
-              e = Collection.findById('entities', e.extends);
+              e = await Collection.findById('entities', e.extends);
             }
             else {
               break;
@@ -100,9 +158,12 @@ var Models = {
           //   label.push(`${propName}: ${properties[propName]}`);
           // }
 
-          var label = properties.Name ? properties.Name : Object.values(properties)[0];
+          label = properties.Name ? properties.Name : Object.values(properties)[0];
 
-          return showType ? `${label} (${entity.type})` : label;
+        }
+
+
+        return showType ? `${label} (${entity.type})` : label;
       }
       else {
         return '(none)';
@@ -110,7 +171,6 @@ var Models = {
     }
   }
 }
-
 
 
 async function handleClientPush(payload, user) {
@@ -270,30 +330,33 @@ var prefix = '/v1/';
 async function timerData(subject) {
   var objects = [];
 
-  var entities = await (await db.collection('entities').find({_deleted:null})).toArray();
+  var entities = await (await db.collection('entities').find({_deleted:null, })).toArray();
   for (var entity of entities) {
-    var name = Models.Entity.display(entity);
+    var name = await Models.Entity.display(entity, false);
+    if (typeof Models.Entity.property(entity, 'Activity') != 'undefined') {
     objects.push({
       label: name,
       _id: { entity: entity._id }
     });
+
+    }
   }
 
-  var issues = await (await db.collection('issues').find({_deleted:null, completed:null})).toArray();
-  for (var issue of issues) {
-    objects.push({
-      label: issue.description,
-      _id: { issue: issue._id }
-    });
-  }
+  // var issues = await (await db.collection('issues').find({_deleted:null, completed:null})).toArray();
+  // for (var issue of issues) {
+  //   objects.push({
+  //     label: issue.description,
+  //     _id: { issue: issue._id }
+  //   });
+  // }
 
-  var tasks = await (await db.collection('tasks').find({_deleted:null, completed:null})).toArray();
-  for (var task of tasks) {
-    objects.push({
-      label: task.title,
-      _id: { task: task._id }
-    });
-  }
+  // var tasks = await (await db.collection('tasks').find({_deleted:null, completed:null})).toArray();
+  // for (var task of tasks) {
+  //   objects.push({
+  //     label: task.title,
+  //     _id: { task: task._id }
+  //   });
+  // }
 
 
   for (var object of objects) {
@@ -327,7 +390,7 @@ async function timerData(subject) {
     var label;
     if (entry.activity.object.entity) {
       var entity = await db.collection('entities').findOne({ _id: entry.activity.object.entity });
-      label = Models.Entity.display(entity);
+      label = await Models.Entity.display(entity);
     }
     else {
       label = 'adsf';
