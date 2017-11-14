@@ -412,7 +412,7 @@ async function timerData(subject) {
   })
 
   return {
-    activities: ['Communication', 'Development', 'Management', 'Estimation', 'Scoping', 'Importing', 'Orienting'],
+    activities: ['Communication', 'Development', 'Management', 'Estimation', 'Scoping', /*'Importing', */'Orienting'],
     objects: objects,
     timers: timers,
   };
