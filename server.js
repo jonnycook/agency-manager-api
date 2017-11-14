@@ -481,7 +481,7 @@ server.route([
     path: `${prefix}data`,
     handler: async function(request, reply) {
       var doc = await db.collection('entities').findOne({_id: request.query.entity});
-      reply(doc.data.find((data) => data._id == request.query.data).content);
+      reply(doc.data.find((data) => data._id == request.query.data));
     }
   },
 
