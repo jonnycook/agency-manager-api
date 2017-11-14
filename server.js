@@ -480,8 +480,15 @@ server.route([
     method: 'GET',
     path: `${prefix}data`,
     handler: async function(request, reply) {
-      var doc = await db.collection('entities').findOne({_id: request.query.entity});
-      reply(doc.data.find((data) => data._id == request.query.data));
+      var entity = await db.collection('entities').findOne({_id: request.query.entity});
+
+
+      var response = {
+        data: entity.data.find((data) => data._id == request.query.data),
+        entity: Models.Entity.display(entity, false)
+      }
+
+      reply();
     }
   },
 
