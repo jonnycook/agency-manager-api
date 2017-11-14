@@ -485,7 +485,7 @@ server.route([
 
       var response = {
         data: entity.data.find((data) => data._id == request.query.data),
-        entity: Models.Entity.display(entity, false)
+        entity: await Models.Entity.display(entity, false)
       }
 
       reply(response);
