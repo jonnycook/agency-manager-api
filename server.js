@@ -488,7 +488,7 @@ server.route([
         entity: Models.Entity.display(entity, false)
       }
 
-      reply();
+      reply(response);
     }
   },
 
