@@ -412,7 +412,7 @@ async function timerData(subject) {
   })
 
   return {
-    activities: ['Communication', 'Development', 'Management', 'Estimation', 'Scoping', 'Importing'],
+    activities: ['Communication', 'Development', 'Management', 'Estimation', 'Scoping', 'Importing', 'Orienting'],
     objects: objects,
     timers: timers,
   };
@@ -481,7 +481,6 @@ server.route([
     path: `${prefix}data`,
     handler: async function(request, reply) {
       var entity = await db.collection('entities').findOne({_id: request.query.entity});
-
 
       var response = {
         data: entity.data.find((data) => data._id == request.query.data),
