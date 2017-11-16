@@ -413,7 +413,7 @@ async function timerData(subject) {
 
   return {
     activities: ['Communication', 'Development', 'Management', 'Estimation', 'Scoping', /*'Importing', */'Orienting'],
-    objects: objects,
+    objects: objects.sort((a, b) => a.label < b.label ? -1 : 1),
     timers: timers,
   };
 }
