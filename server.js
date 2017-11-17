@@ -560,7 +560,7 @@ server.route([
       if (!(await auth(request.headers.authentication))) return reply(false);
       var collections = {};
       for (var collection of await db.collections()) {
-        collections[collection.collectionName] = await (await collection.find({_deleted:null}, {_created: 0, _history: 0})).toArray();
+        collections[collection.collectionName] = await (await collection.find({_deleted:null}, {_history: 0})).toArray();
       }
       return reply(JSON.stringify(collections)).type('application/json');
     }
