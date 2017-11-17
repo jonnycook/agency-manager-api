@@ -366,7 +366,7 @@ async function timerData(subject) {
   var timers = [];
 
   var grouped = {};
-  var entries = await (await db.collection('work_log_entries').find({ subject, start: { $gte: new Date().beginningOfDay(), $lt: new Date().endOfDay() } }).sort({start:-1})).toArray();
+  var entries = await (await db.collection('work_log_entries').find({ _deleted:null, subject, start: { $gte: new Date().beginningOfDay(), $lt: new Date().endOfDay() } }).sort({start:-1})).toArray();
 
   for (let entry of entries) {
     let key = JSON.stringify(entry.activity);
