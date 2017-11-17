@@ -446,7 +446,7 @@ server.route([
         object: JSON.parse(new Buffer(request.payload.object, 'base64').toString('ascii'))
       }
 
-      var doc = await db.collection('work_log_entries').findOne({subject: subject, activity: activity, end: null});
+      var doc = await db.collection('work_log_entries').findOne({_deleted: null, subject: subject, activity: activity, end: null});
       if (doc) {
         handleClientPush({
           collection: 'work_log_entries',
